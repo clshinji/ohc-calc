@@ -27,8 +27,14 @@ def main():
     st.sidebar.write(f"単位重量: {wire.weight}N/m")
 
     # ち度・張力計算の条件を設定
+    calc_tension = st.sidebar.toggle("張力を計算する")
     span = st.sidebar.number_input("径間長(m)", value=50.0, step=0.5)
-    tention = st.sidebar.number_input("張力(N)", value=980.0, step=100.0)
+    if calc_tension:
+        dip = st.sidebar.number_input("ち度(m)", value=0.05, step=0.05)
+        tension = wdt.tension_calc(weight, span, dip)
+    else:
+        tension = st.sidebar.number_input("張力(N)", value=980.0, step=98.0)
+        dip = wdt.dip_calc(weight, span, tension)
 
     is_inclined = st.sidebar.toggle("斜ち度の場合", value=False)
     if is_inclined:
@@ -38,14 +44,15 @@ def main():
         height1 = st.sidebar.number_input("支持点の高さ(m)", value=10.0, step=0.5)
         height2 = None
 
-    dip = wdt.dip_calc(weight, span, tention)
-    tention = wdt.tention_calc(weight, span, dip)
-
-    st.write(f"ち度: {dip*1000:.2f}mm   張力: {tention/1000:.2f}kN")
+    
+    if is_inclined:
+        x, y, span_a = wdt.catenary_calc(weight, span, tension, dip, height1, height2)
+        st.write(f"ち度: {dip*1000:.2f}mm (最大ち度位置: {span_a:.2f}m)   張力: {tension/1000:.2f}kN")
+    else:
+        x, y = wdt.catenary_calc(weight, span, tension, dip, height1, height2)
+        st.write(f"ち度: {dip*1000:.2f}mm (最大ち度位置: {span/2:.2f}m)   張力: {tension/1000:.2f}kN")
 
     # 電線のカテナリを plotly でグラフ化して表示する
-    x, y = wdt.catenary_calc(weight, span, tention, dip, height1, height2)
-
     fig = px.line(x=x, y=y)
     st.plotly_chart(fig)
 
