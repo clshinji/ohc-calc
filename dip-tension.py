@@ -20,21 +20,22 @@ def main():
     # 線種を選択
     wire_type = st.sidebar.selectbox("線種", [wire.type for wire in wires], index=47)
     wire = next((wire for wire in wires if wire.type == wire_type), None)
-    weight = wire.weight
     st.sidebar.write(f"線種: {wire.name}")
-    st.sidebar.write(f"計算断面積: {wire.cross_section}mm2")
-    st.sidebar.write(f"外径: {wire.diameter}mm")
-    st.sidebar.write(f"単位重量: {wire.weight}N/m")
+    st.sidebar.write(f"計算断面積: {wire.cross_section * 10 ** 6} mm2")
+    st.sidebar.write(f"外径: {wire.diameter * 1000} mm")
+    st.sidebar.write(f"単位重量: {wire.weight} N/m")
+    st.sidebar.write(f"弾性係数: {wire.elastic_modulus / 10 ** 9} e9 N/m2")
+    st.sidebar.write(f"線膨張係数: {wire.thermal_expansion} e-6 /℃")
 
     # ち度・張力計算の条件を設定
     calc_tension = st.sidebar.toggle("張力を計算する")
     span = st.sidebar.number_input("径間長(m)", value=50.0, step=0.5)
     if calc_tension:
         dip = st.sidebar.number_input("ち度(m)", value=0.05, step=0.05)
-        tension = wdt.tension_calc(weight, span, dip)
+        tension = wdt.tension_calc(wire, span, dip)
     else:
-        tension = st.sidebar.number_input("張力(N)", value=980.0, step=98.0)
-        dip = wdt.dip_calc(weight, span, tension)
+        tension = st.sidebar.number_input("張力(kN)", value=9.8, step=4.9) * 1000
+        dip = wdt.dip_calc(wire, span, tension)
 
     is_inclined = st.sidebar.toggle("斜ち度の場合", value=False)
     if is_inclined:
@@ -44,17 +45,24 @@ def main():
         height1 = st.sidebar.number_input("支持点の高さ(m)", value=10.0, step=0.5)
         height2 = None
 
-    
     if is_inclined:
-        x, y, span_a = wdt.catenary_calc(weight, span, tension, dip, height1, height2)
+        x, y, span_a = wdt.catenary_calc(wire, span, tension, dip, height1, height2)
         st.write(f"ち度: {dip*1000:.2f}mm (最大ち度位置: {span_a:.2f}m)   張力: {tension/1000:.2f}kN")
     else:
-        x, y = wdt.catenary_calc(weight, span, tension, dip, height1, height2)
+        x, y = wdt.catenary_calc(wire, span, tension, dip, height1, height2)
         st.write(f"ち度: {dip*1000:.2f}mm (最大ち度位置: {span/2:.2f}m)   張力: {tension/1000:.2f}kN")
 
     # 電線のカテナリを plotly でグラフ化して表示する
     fig = px.line(x=x, y=y)
     st.plotly_chart(fig)
+
+    # 温度変化がある場合の計算
+    calc_temperature = st.sidebar.toggle("温度変化がある場合の計算", value=False)
+    if calc_temperature:
+        t = st.sidebar.number_input("温度(℃)", value=40.0, step=1.0)
+        t0 = st.sidebar.number_input("基準温度(℃)", value=10.0, step=1.0)
+        dip_t, tension_t = wdt.calc_dip_tension_with_temperature(wire, span, tension, t, t0)
+        st.write(f"温度変化がある場合のち度: {dip_t*1000:.2f}mm   張力: {tension_t/1000:.2f}kN")
 
 
 if __name__ == "__main__":
