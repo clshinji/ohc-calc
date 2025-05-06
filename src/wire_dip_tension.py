@@ -1,5 +1,8 @@
+import time
+from typing import Tuple
 import numpy as np
 from scipy.optimize import fsolve
+from scipy.optimize import newton
 from src.wire_db import Wire
 
 
@@ -59,7 +62,7 @@ def dip_tension_calc(wire: Wire, span: float, dip: float = None, tension: float 
         raise ValueError("弛度または張力を入力してください")
 
 
-def calc_dip_tension_with_temperature(wire: Wire, span: float, tension: float, t: float, t0: float) -> float:
+def calc_dip_tension_with_temperature(wire: Wire, span: float, tension: float, t: float, t0: float) -> Tuple[float, float]:
     """
     ち度・張力計算(温度変化がある場合)
     Args:
@@ -72,20 +75,37 @@ def calc_dip_tension_with_temperature(wire: Wire, span: float, tension: float, t
         dip(float): 弛度(m)
         tension(float): 張力(N)
     """
-    if wire.weight <= 0 or span <= 0 or tension <= 0 or t <= 0 or t0 <= 0:
-        raise ValueError("weight, span, tension, t, t0 は正の数である必要があります")
+    # 必須パラメータのチェック
+    if wire.weight <= 0 or span <= 0 or tension <= 0:
+        raise ValueError("weight, span, tension は正の数である必要があります")
+    
+    # 標準温度での弛度の計算
     dip0 = dip_calc(wire, span, tension)
+
+    # 弛度の計算
+    # print(">>> 弛度の計算 ------------------------------")
     d_arg2 = 3 * span ** 2 / (8 * wire.cross_section * wire.elastic_modulus) * (tension - wire.cross_section * wire.elastic_modulus * wire.thermal_expansion * (t - t0)) - dip0 ** 2
     d_arg3 = 3 * wire.weight * span ** 4 / (64 * wire.cross_section * wire.elastic_modulus)
-    print(f"d_arg2: {d_arg2}, d_arg3: {d_arg3}")
-    dip = fsolve(lambda d: d ** 3 + d_arg2 * d + d_arg3, dip0 * 10)    # 初期値は標準温度での弛度の10倍をとりあえず設定
-    print(f"dip: {dip}m")
+    # 弛度の係数 [d^3, d^2, d, 1]
+    roots_d = np.roots([1.0, 0.0, d_arg2, -d_arg3])
+    # print(f"roots_d: {roots_d}")
+    dip_t = float(next(r for r in roots_d if np.isreal(r) and r > 0).real)
+
+    # 張力の計算
+    # print(">>> 張力の計算 ------------------------------")
     t_arg2 = tension - 8 * wire.cross_section * wire.elastic_modulus * dip0 ** 2 / (3 * span ** 2) - wire.cross_section * wire.elastic_modulus * wire.thermal_expansion * (t - t0)
     t_arg3 = wire.cross_section * wire.elastic_modulus * wire.weight ** 2 * span ** 2 / 24
-    print(f"t_arg2: {t_arg2}, t_arg3: {t_arg3}")
-    tension = fsolve(lambda t: t ** 3 - t_arg2 * t - t_arg3, tension)
-    print(f"tension: {tension}N")
-    return dip[0], tension[0]
+    # 張力の係数 [t^3, t^2, t, 1]
+    roots_t = np.roots([1.0, -t_arg2, 0.0, -t_arg3])
+    # print(f"roots_t: {roots_t}")
+    tension_t = float(next(r for r in roots_t if np.isreal(r) and r > 0).real)
+    # print(f"tension: {tension_t} N")
+
+    # 弛度の計算結果から簡易式で計算しても結果は同等
+    # ⇧の計算に時間がかかるようなら、こっちの方がシンプルで良いかも
+    # print(f"簡易式で計算したtension: {wire.weight * span * span / (8 * dip_t)} N")
+
+    return dip_t, tension_t
 
 
 
@@ -109,7 +129,7 @@ def catenary_calc(wire: Wire, span: float, tension: float, dip: float, height1: 
     if height2 is None:
         # print("ち度計算")
         y = wire.weight / (2 * tension) * (x - span / 2) ** 2 + (height1 - dip)
-        return x, y
+        return x, y, span / 2
     else:
         # print("斜ち度計算")
         span_a = span / 2 - tension * abs(height1 - height2) / (wire.weight * span)
