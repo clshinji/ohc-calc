@@ -12,6 +12,8 @@ def dip_calc(weight: float, span: float, tension: float) -> float:
     Returns:
         dip: 弛度(m)
     """
+    if weight <= 0 or span <= 0 or tension <= 0:
+        raise ValueError("weight, span, tension は正の数である必要があります")
     dip = weight * span * span / (8 * tension)
     return dip
 
@@ -26,6 +28,8 @@ def tension_calc(weight: float, span: float, dip: float) -> float:
     Returns:
         tension: 張力(N)
     """
+    if weight <= 0 or span <= 0 or dip <= 0:
+        raise ValueError("weight, span, dip は正の数である必要があります")
     tension = weight * span * span / (8 * dip)
     return tension
 
@@ -42,6 +46,8 @@ def dip_tension_calc(weight: float, span: float, dip: float = None, tension: flo
         dip: 弛度(m)
         tension: 張力(N)
     """
+    if weight <= 0 or span <= 0 or dip <= 0 or tension <= 0:
+        raise ValueError("weight, span, dip, tension は正の数である必要があります")
     if dip is not None:
         tension = weight * span * span / (8 * dip)
         return tension
@@ -56,6 +62,8 @@ def dip_calc_with_temperature(weight: float, span: float, tension: float, t: flo
     """
     弛度計算(温度変化がある場合)
     """
+    if weight <= 0 or span <= 0 or tension <= 0 or t <= 0 or t0 <= 0:
+        raise ValueError("weight, span, tension, t, t0 は正の数である必要があります")
     dip = weight * span * span / (8 * tension)
     return dip
 
@@ -75,6 +83,8 @@ def catenary_calc(weight: float, span: float, tension: float, dip: float, height
         x(float): 電線のx座標(m)
         y(float): 電線のy座標(m)
     """
+    if weight <= 0 or span <= 0 or tension <= 0 or dip <= 0 or height1 <= 0:
+        raise ValueError("weight, span, tension, dip, height1 は正の数である必要があります")
     x = np.linspace(0, span, 100)
     if height2 is None:
         # print("ち度計算")
