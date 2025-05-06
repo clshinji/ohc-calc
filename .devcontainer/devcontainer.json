@@ -28,7 +28,8 @@
 			"extensions": [
 				"ms-python.python",
 				"ms-toolsai.jupyter",
-				"ms-python.black-formatter"
+				"ms-python.black-formatter",
+				"streetsidesoftware.code-spell-checker"
 			]
 		}
 	}

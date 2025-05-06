@@ -19,7 +19,7 @@ VSCode 拡張機能に Dev Container を追加します。
 Dev Container でフォルダが開いたら、以下のコマンドでアプリを起動します。
 
 ```
-streamlit run dip-tention.py --server.port 8501
+streamlit run dip-tension.py --server.port 8501
 ```
 
 ローカルホストでアプリが起動しますが、起動しない場合は、 localhost:8501 にアクセスします。
