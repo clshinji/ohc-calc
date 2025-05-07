@@ -18,7 +18,7 @@ def dip_calc(wire: Wire, span: float, tension: float) -> float:
     """
     if wire.weight <= 0 or span <= 0 or tension <= 0:
         raise ValueError("weight, span, tension は正の数である必要があります")
-    dip = wire.weight * span * span / (8 * tension)
+    dip = wire.weight * span ** 2 / (8 * tension)
     return dip
 
 
@@ -34,7 +34,7 @@ def tension_calc(wire: Wire, span: float, dip: float) -> float:
     """
     if wire.weight <= 0 or span <= 0 or dip <= 0:
         raise ValueError("weight, span, dip は正の数である必要があります")
-    tension = wire.weight * span * span / (8 * dip)
+    tension = wire.weight * span ** 2 / (8 * dip)
     return tension
 
 
@@ -53,10 +53,10 @@ def dip_tension_calc(wire: Wire, span: float, dip: float = None, tension: float 
     if wire.weight <= 0 or span <= 0 or dip <= 0 or tension <= 0:
         raise ValueError("weight, span, dip, tension は正の数である必要があります")
     if dip is not None:
-        tension = wire.weight * span * span / (8 * dip)
+        tension = wire.weight * span ** 2 / (8 * dip)
         return tension
     elif tension is not None:
-        dip = wire.weight * span * span / (8 * tension)
+        dip = wire.weight * span ** 2 / (8 * tension)
         return dip
     else:
         raise ValueError("弛度または張力を入力してください")
@@ -123,8 +123,8 @@ def catenary_calc(wire: Wire, span: float, tension: float, dip: float, height1: 
         x(float): 電線のx座標(m)
         y(float): 電線のy座標(m)
     """
-    if wire.weight <= 0 or span <= 0 or tension <= 0 or dip <= 0 or height1 <= 0:
-        raise ValueError("weight, span, tension, dip, height1 は正の数である必要があります")
+    if wire.weight <= 0 or span <= 0 or tension <= 0 or dip <= 0:
+        raise ValueError("weight, span, tension, dip は正の数である必要があります")
     x = np.linspace(0, span, 100)
     if height2 is None:
         # print("ち度計算")
@@ -132,16 +132,20 @@ def catenary_calc(wire: Wire, span: float, tension: float, dip: float, height1: 
         return x, y, span / 2
     else:
         # print("斜ち度計算")
-        span_a = span / 2 - tension * abs(height1 - height2) / (wire.weight * span)
+        span_a = span / 2 - tension * (height2 - height1) / (wire.weight * span)
         # print(f"span_a: {span_a}m")
-        y = wire.weight / (2 * tension) * (x - span_a) ** 2 + (height1 - dip)
+        # 元の式: y = wire.weight / (2 * tension) * (x - span_a) ** 2 + (height1 - dip)
+        # x=0 で y=height1, x=span で y=height2 となるようにオフセットを計算します。
+        # これにより、この分岐では引数 dip は使用されません。
+        y_offset = height1 - (wire.weight / (2 * tension)) * span_a ** 2
+        y = wire.weight / (2 * tension) * (x - span_a) ** 2 + y_offset
         return x, y, span_a
 
 
 if __name__ == "__main__":
-    weight = 0.6970  # kg/m
+    weight = 6.83  # N/m
     span = 50.0  # m
-    tension = 980.0  # N
+    tension = 9800.0  # N
     dip = dip_calc(weight, span, tension)
     print(f"dip: {dip}m")
     tension = tension_calc(weight, span, dip)

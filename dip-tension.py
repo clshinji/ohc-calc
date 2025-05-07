@@ -20,7 +20,7 @@ def main():
 
     main_view = st.container()
     result_view = st.container()
-    log_view = st.expander("計算ログ", expanded=False)
+    log_view = st.expander("(参考)計算ログ", expanded=False)
 
     # 線種を選択
     wire_type = st.sidebar.selectbox("線種", [wire.type for wire in wires], index=47)
@@ -54,21 +54,51 @@ def main():
     # 温度変化がある場合の計算
     calc_temperature = st.sidebar.toggle("温度変化がある場合の計算", value=False)
     if calc_temperature:
-        t = st.sidebar.number_input("温度(℃)", value=40.0, step=1.0)
+        t1 = st.sidebar.number_input("最低温度(℃)", value=-20.0, step=1.0)
         t0 = st.sidebar.number_input("基準温度(℃)", value=10.0, step=1.0)
-        dip_t, tension_t = wdt.calc_dip_tension_with_temperature(wire, span, tension, t, t0)
-        result_view.write(f"温度変化がある場合のち度: {dip_t*1000:.2f}mm   張力: {tension_t/1000:.2f}kN")
+        t2 = st.sidebar.number_input("最高温度(℃)", value=40.0, step=1.0)
+        dip_t1, tension_t1 = wdt.calc_dip_tension_with_temperature(wire, span, tension, t1, t0)
+        dip_t2, tension_t2 = wdt.calc_dip_tension_with_temperature(wire, span, tension, t2, t0)
+    else:
+        t0 = st.sidebar.number_input("基準温度(℃)", value=10.0, step=1.0)
 
     # グラフデータの作成
     # 標準温度での電線のカテナリを計算する
     x, y, span_a = wdt.catenary_calc(wire, span, tension, dip, height1, height2)
     df_lines = pd.DataFrame({'x': x, 'y': y, '状態': ['標準温度'] * len(x)})
+    
+    # 結果表示用のデータフレームを作成
+    result_data = [{
+        '状態': f'基準温度 {t0}℃',
+        'ち度 (mm)': f'{dip*1000:.2f}',
+        '最大ち度位置 (m)': f'{span_a:.2f}',
+        '張力 (kN)': f'{tension/1000:.2f}'
+    }]
+    
     if calc_temperature:
-        x_t, y_t, span_a_t = wdt.catenary_calc(wire, span, tension_t, dip_t, height1, height2)
-        df_temp = pd.DataFrame({'x': x_t, 'y': y_t, '状態': [f'{t}℃'] * len(x_t)})
-        df_lines = pd.concat([df_lines, df_temp], ignore_index=True)
+        x_t1, y_t1, span_a_t1 = wdt.catenary_calc(wire, span, tension_t1, dip_t1, height1, height2)
+        x_t2, y_t2, span_a_t2 = wdt.catenary_calc(wire, span, tension_t2, dip_t2, height1, height2)
+        df_temp1 = pd.DataFrame({'x': x_t1, 'y': y_t1, '状態': [f'{t1}℃'] * len(x_t1)})
+        df_temp2 = pd.DataFrame({'x': x_t2, 'y': y_t2, '状態': [f'{t2}℃'] * len(x_t2)})
+        df_lines = pd.concat([df_lines, df_temp1, df_temp2], ignore_index=True)
         
-    result_view.write(f"ち度: {dip*1000:.2f}mm (最大ち度位置: {span_a:.2f}m)   張力: {tension/1000:.2f}kN")
+        # 温度変化時のデータを結果テーブルに追加
+        result_data.append({
+            '状態': f'最低温度 {t1}℃',
+            'ち度 (mm)': f'{dip_t1*1000:.2f}',
+            '最大ち度位置 (m)': f'{span_a_t1:.2f}',
+            '張力 (kN)': f'{tension_t1/1000:.2f}'
+        })
+        result_data.append({
+            '状態': f'最高温度 {t2}℃',
+            'ち度 (mm)': f'{dip_t2*1000:.2f}',
+            '最大ち度位置 (m)': f'{span_a_t2:.2f}',
+            '張力 (kN)': f'{tension_t2/1000:.2f}'
+        })
+    
+    # 結果を表形式で表示
+    result_view.dataframe(pd.DataFrame(result_data), hide_index=True)
+    
 
     # plotly で Line Plot を描画
     fig = px.line(df_lines, x='x', y='y', color='状態', 
